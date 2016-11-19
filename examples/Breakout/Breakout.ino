@@ -3,10 +3,7 @@
 #include <SoftwareSerial.h>
  
 Gamer gamer;
- 
-//TODO!:
-// GET IMAGES AND SCORE TO DISPLAY CORRECTLY!
-// SLIGHT PHYSICS TWEAKS!
+
  
 int currentX = 5;
 int currentY = 4;
@@ -44,6 +41,10 @@ void setupFun() { //run this at the start
 }
  
 void setup() {
+  //let's seed our PRNG with micros,
+  //far from perfect but at least subsequent games should 
+  //probably be different.
+  randomSeed(micros());
   gamer.begin();
   setupNums();
   startGame(true);
@@ -62,115 +63,29 @@ void startGame(boolean resetIt) {
     delay(500);
   } 
   else score=0;
-  currentX=5;
-  currentY=5;
-  velocity[0]=-1;
+  //randomize the start position and direction (in the x sense anyhow)
+  currentX=random(1,6);
+  velocity[0]=random(1,2)?-1:1;
+  currentY=6;
   velocity[1]=-1;
 }
  
 void loop() {
-  if(counter>2) {
-    for(int x=0;x<8;x++) {
-      for(int y=0;y<8;y++) {
-        gamer.display[x][y] = LOW;
-      }
-    }
-  }
-  for(int x=0;x<8;x++) {
-    gamer.display[x][7]=LOW;
-  }
+
+
   if(gamer.isHeld(LEFT)&&paddleX>0){
     paddleX--;
   } 
   else if(gamer.isHeld(RIGHT)&&paddleX<4) {
     paddleX++;
   }
-  for(int a=0;a<4;a++) {
-    if(paddleX+a<8) {
-      gamer.display[paddleX+a][7]=HIGH;
-    }
-  }
-  if(counter>2) {
-    origXV = velocity[0];
-    origYV = velocity[1];
-    for(int x=0;x<8;x++) {
-      for(int y=0;y<4;y++) {
-        if(blocks[x][y] == 1) {
-          gamer.display[x][y] = HIGH;
-        }
-      }
-    }
-    physics();
-    for(int x=0;x<8;x++) {
-      for(int y=0;y<8;y++) {
-        if(blocks[x][y]==0) {
-          if(x%2==0) {
-            if(y%2==0) {
-              blocks[x+1][y]=0;
-            } 
-            else blocks[x-1][y]=0;
-          } 
-          else {
-            if(y%2==0) {
-              blocks[x-1][y]=0;
-            } 
-            else blocks[x+1][y]=0;
-          }
-        }  
-      }
-    }
-    for(int x=0;x<8;x++) {
-      for(int y=0;y<4;y++) {
-        if(blocks[x][y] == 0) {
-          gamer.display[x][y] = LOW;
-        }
-      }
-    }
-    int newX = currentX + velocity[0];
-    int newY = currentY + velocity[1];
-    if(newX>-1 && newX<8) {
-      if(newY>-1 && newY<8) {
-      } 
-      else {
-        if(gamer.display[newX][currentY-velocity[1]]==LOW) {
-          blocks[newX][currentY+velocity[1]]=0;
-          velocity[1]*=-1;
-        } 
-        else {
-          blocks[currentX+velocity[0]][currentY+velocity[1]]=0;
-          velocity[1]*=-1;
-          velocity[0]*=-1;
-        }
-      }
-    } 
-    else {
-      if(gamer.display[currentX-velocity[0]][newY]==LOW) {
-        blocks[currentX+velocity[0]][newY]=0;
-        velocity[0]*=-1;
-        if(newY<0 || newY>7) {
-          if(gamer.display[currentX+velocity[0]][currentY-velocity[1]]==LOW) {
-            blocks[currentX-velocity[0]][currentY-velocity[1]]=0;
-            velocity[1]*=-1;
-          } 
-          else panic();
-        }
-      } 
-      else {
-        for(int x=-1;x<2;x++) {
-          for(int y=-1;y<2;y++) {
-            blocks[currentX+x][currentY+y]=0;
-          }
-        }
-        velocity[0]*=-1;
-        velocity[1]*=-1;
-      }
-    }
-    currentX = currentX+velocity[0];
-    currentY = currentY+velocity[1];
-    gamer.display[currentX][currentY] = HIGH;
-    counter=0;
-  } 
-  else counter++;
+
+  physics();
+  currentX = currentX+velocity[0];
+  currentY = currentY+velocity[1];
+  
+  redrawScreen();
+  
   gamer.updateDisplay();
   if(currentY==7) { //if out of play, lose
     for(int b=0;b<4;b++) {
@@ -206,87 +121,76 @@ void loop() {
   if(finished) {
     startGame(false);
   }
-  delay(50);
+  delay(150);
 }
- 
-boolean outOfBounds(int xV, int yV) {
-  if(xV > 8 || xV < 0) {
-    return true;
-  } 
-  else if(yV > 8 || yV < 0) {
-    return true;
-  } 
-  else {
-    return false;
+
+void redrawScreen() {
+  //blank the screen
+  for(int x=0;x<8;x++) {
+    for(int y=0;y<8;y++) {
+        gamer.display[x][y] = LOW;
+    }
   }
+    //draw paddle
+  for(int a=0;a<4;a++) {
+    if(paddleX+a<8) {
+      gamer.display[paddleX+a][7]=HIGH;
+    }
+  }
+  //draw the wall
+  for(int x=0;x<8;x++) {
+    for(int y=0;y<4;y++) {
+      blocks[x][y] == 0 ? gamer.display[x][y] = LOW : gamer.display[x][y] = HIGH;
+    }
+  }  
+  //draw the ball
+  gamer.display[currentX][currentY] = HIGH;
+  gamer.updateDisplay();
 }
- 
+
 void physics() {
-  if(gamer.display[currentX+velocity[0]][currentY+velocity[1]]==HIGH || outOfBounds(currentX+velocity[0],currentY+velocity[1])) {
-    //Collided with something!!!
-    if(velocity[0]==1) {
-      if(velocity[1]==1) {
-        if(gamer.display[currentX+velocity[0]][currentY-1]==LOW && !outOfBounds(currentX+velocity[0],currentY-1)) {
-          velocity[1]=-1;
-        }
-        else if(gamer.display[currentX-1][currentY-1]==LOW && !outOfBounds(currentX-1,currentY-1)) {
-          velocity[1]=-1;
-          velocity[0]=-1;
-        }
-        else panic();
-      }
-      else if(velocity[1]==-1) {
-        if(gamer.display[currentX+velocity[0]][currentY+1]==LOW && !outOfBounds(currentX+velocity[0],currentY+1)) {
-          velocity[1]=1;
-        } 
-        else if(gamer.display[currentX-1][currentY+1]==LOW && !outOfBounds(currentX-1,currentY+1)) {
-          velocity[1]=1;
-          velocity[0]=-1;
-        } 
-        else panic();
-      } 
-      else {
-        //Something has gone wrong
-        panic();
-      }
-    } 
-    else if(velocity[0]==-1) {
-      if(velocity[1]==1) {
-        if(gamer.display[currentX+velocity[0]][currentY-1]==LOW && !outOfBounds(currentX+velocity[0],currentY-1)) {
-          velocity[1]=-1;
-        } 
-        else if(gamer.display[currentX+1][currentY-1]==LOW && !outOfBounds(currentX-1,currentY-1)) {
-          velocity[1]=-1;
-          velocity[0]=1;
-        } 
-        else panic();
-      } 
-      else if(velocity[1]==-1) {
-        if(gamer.display[currentX+velocity[0]][currentY+1]==LOW && !outOfBounds(currentX+velocity[0],currentY+1)) {
-          velocity[1]=1;
-        } 
-        else if(gamer.display[currentX+1][currentY+1]==LOW && !outOfBounds(currentX-1,currentY+1)) {
-          velocity[1]=1;
-          velocity[0]=1;
-        } 
-        else panic();
-      } 
-      else {
-        //Something has gone wrong
-        panic();
-      }
+
+  boolean collision = true;
+
+  //we basically have to iterate until we don't have a potential collision,
+  //changing the 'velocity' on collision means we have to also check that the 
+  //new velocity won't result in a collision, so we loop until there's no 
+  //potential collision 
+  
+  while (collision) {
+    collision = false;
+    int adjustedX = currentX+velocity[0];
+    int adjustedY = currentY+velocity[1];
+    if(adjustedX > 7 || adjustedX < 0) {
+      velocity[0] = -velocity[0];
+      collision = true;
     }
-    if(!outOfBounds(currentX+origXV,currentY+origYV)) {
-      blocks[currentX+origXV][currentY+origYV]=0;
+    if(adjustedY> 7 || adjustedY < 0) {
+      velocity[1] = -velocity[1];
+      collision = true;
     }
+  
+    adjustedX = currentX+velocity[0];
+    adjustedY = currentY+velocity[1];
+   
+    //check for block collisions, we want to make sure we're not going to check out of bounds array indices
+    if(adjustedX >= 0 && adjustedX < 8 && gamer.display[adjustedX][currentY] == HIGH) {
+       if(currentY < 5) blocks[adjustedX][currentY] = LOW;
+        velocity[0] = -velocity[0];
+        collision = true;
+      } else if(adjustedY >= 0 && adjustedY < 8 && gamer.display[currentX][adjustedY] == HIGH) {
+        if(adjustedY < 5) blocks[currentX][adjustedY] = LOW;
+        velocity[1] = - velocity[1];
+        collision = true;
+      } else if(adjustedX >= 0 && adjustedX < 8 && adjustedY >=0 && adjustedY < 8 && gamer.display[adjustedX][adjustedY] == HIGH) {
+        if(adjustedY < 5) blocks[adjustedX][adjustedY] = LOW;
+        velocity[1] = -velocity[1];
+        velocity[0] = -velocity[0];
+        collision = true;
+      }
   }
 }
- 
-void panic() {
-  //PANNNIIIIICCCC!!!!
-  Serial.print("ARGH!!!!");
-}
- 
+
 void showScore(int dig1,int dig2) {
   byte result[8];
   for(int p=0;p<8;p++) {
