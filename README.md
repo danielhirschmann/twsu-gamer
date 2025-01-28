@@ -1,6 +1,5 @@
 # DIY Gamer Kit Arduino Library
-
-This software is for the [DIY Gamer Kit](http://www.techwillsaveus.com/shop/diy-kits/diy-gamer-kit-arduino/).
+# Please note, the DIY Gamer Kit was a product made by the STEAM toy company Tech Will Save Us. It is no longer trading, but the product still works fine :-) 
 
 The library is essential for using your DIY Gamer Kit to:
 
@@ -31,5 +30,3 @@ The easiest way to test that the library has been successfully installed, is to 
 ## Contributions and Bug Fixes
 
 For contributing to the library or games, first fork the master branch, modify, and open a pull request. We will evaluate end test your contributions and merge into this repo.
-
-For anything else, write to us at `support@techwillsaveus.com`.
